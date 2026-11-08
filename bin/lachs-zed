@@ -1,0 +1,39 @@
+#!/bin/sh
+# Resumes Claude sessions in Zed terminal threads.
+#   resume <session-id> <cwd> <repo-root>  leave a resume note, then focus the repo in Zed
+#   focus <repo-root>                      focus the repo in Zed
+#   init                                   Zed's agent.terminal_init_command
+set -eu
+
+NOTE="$HOME/.local/state/lachs/resume-note"
+# Zed also runs the init command when it restores saved threads; only a fresh note counts.
+NOTE_MAX_AGE_SECONDS=60
+ZED_CLI=/Applications/Zed.app/Contents/MacOS/cli
+
+case "${1:-}" in
+  resume)
+    mkdir -p "$(dirname "$NOTE")"
+    printf '%s\n%s\n' "$2" "$3" > "$NOTE.tmp"
+    mv "$NOTE.tmp" "$NOTE"
+    exec "$ZED_CLI" -e "$4"
+    ;;
+  focus)
+    exec "$ZED_CLI" -e "$2"
+    ;;
+  init)
+    claimed="$NOTE.$$"
+    if mv "$NOTE" "$claimed" 2>/dev/null; then
+      age=$(( $(date +%s) - $(stat -f %m "$claimed") ))
+      { read -r session_id; read -r cwd; } < "$claimed"
+      rm -f "$claimed"
+      if [ "$age" -le "$NOTE_MAX_AGE_SECONDS" ] && cd "$cwd" 2>/dev/null; then
+        exec claude --resume "$session_id"
+      fi
+    fi
+    exec claude
+    ;;
+  *)
+    echo "usage: lachs-zed resume <session-id> <cwd> <repo-root> | focus <repo-root> | init" >&2
+    exit 64
+    ;;
+esac
