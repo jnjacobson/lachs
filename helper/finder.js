@@ -85,8 +85,11 @@ function followHandoffs(file) {
     seen.add(session.continuedIn);
     const next = path.join(path.dirname(file), `${session.continuedIn}.jsonl`);
     if (!fs.existsSync(next)) break;
+    const nextSession = readSession(next);
+    // A handoff that never ran leaves a transcript with a title but no conversation, so no cwd.
+    if (!nextSession.cwd) break;
     file = next;
-    session = readSession(file);
+    session = nextSession;
   }
   return session;
 }
