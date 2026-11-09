@@ -154,11 +154,33 @@ test('follows a background handoff to the newer session', () => {
     ...creation('2026-10-09T12:55:17.000Z'),
     { type: 'continued-in', sessionId: 'old', continuedInSessionId: 'new' },
   ]);
-  writeTranscript(sessionFile('new'), [{ type: 'ai-title', aiTitle: 'Cart, continued', sessionId: 'new' }]);
+  writeTranscript(sessionFile('new'), [
+    { type: 'ai-title', aiTitle: 'Cart, continued', sessionId: 'new' },
+    { type: 'user', cwd: '/Users/jan/shop', message: { content: 'go on' } },
+  ]);
 
   const session = findCreatorSession(PR, { projectsDir });
   assert.equal(session.sessionId, 'new');
   assert.equal(session.title, 'Cart, continued');
+});
+
+test('stays in the old session when the handoff never ran', () => {
+  writeTranscript(sessionFile('old'), [
+    ...creation('2026-10-09T12:55:17.000Z'),
+    { type: 'ai-title', aiTitle: 'Add cart', sessionId: 'old' },
+    { type: 'continued-in', sessionId: 'old', continuedInSessionId: 'new' },
+  ]);
+  writeTranscript(sessionFile('new'), [
+    { type: 'agent-name', sessionId: 'new' },
+    { type: 'ai-title', aiTitle: 'Cart, continued', sessionId: 'new' },
+  ]);
+
+  assert.deepEqual(findCreatorSession(PR, { projectsDir }), {
+    sessionId: 'old',
+    title: 'Add cart',
+    cwd: '/Users/jan/shop',
+    createdAt: '2026-10-09T12:55:17.000Z',
+  });
 });
 
 test('rejects a URL that is not a pull request', () => {
