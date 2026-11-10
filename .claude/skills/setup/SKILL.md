@@ -16,7 +16,13 @@ Run every step. All of them are safe to repeat.
    - If the current value is neither `"claude"` nor the wrapper, ask before replacing it.
    - Check `~/.config/zed/keymap.json` for a binding to `agent::NewTerminalThread`. If there is none, tell the user to bind one, because resuming waits for that key press.
 
-4. **Load the extension (manual).** For each browser that step 2 registered, tell the user:
+4. **Set the shell for `claude`.** Terminal threads start from `sh`, so a `claude` function or alias in the user's shell (for example one that picks the config dir per project) is bypassed unless `shell` is set in `~/.config/lachs/config.json`.
+   - Use the login shell, not `$SHELL`: Claude's Bash tool can run in another shell. Get it with `dscl . -read ~ UserShell`, then run `<login shell> -ic 'type claude' 2>&1`. It reports "function" or "alias" when one exists.
+   - If `claude` resolves to a function or alias, set `"shell"` to the basename of the login shell (`fish`, `zsh` or `bash`). Skip other shells and tell the user.
+   - If it resolves to the plain binary (`~/.local/bin/claude`), leave `shell` unset, and remove a stale `shell` entry only after asking.
+   - Create the file with `mkdir -p ~/.config/lachs` if needed. Merge into existing JSON and keep other keys such as `resume` and `focus`. If a different `shell` is already set, ask before replacing it.
+
+5. **Load the extension (manual).** For each browser that step 2 registered, tell the user:
    1. Open `brave://extensions` or `chrome://extensions`.
    2. Turn on Developer mode.
    3. Click "Load unpacked" and choose the printed extension folder.
@@ -24,7 +30,7 @@ Run every step. All of them are safe to repeat.
 
    Skip this step when the extension is already loaded. It reloads itself after updates.
 
-5. **Verify.**
+6. **Verify.**
    - Pick a PR this Mac created. Search `~/.claude/projects/*/*.jsonl` for `"prUrl":"`, and remember the rule in CLAUDE.md about the `gh pr create` text.
    - Run `~/.local/share/lachs/native-host lookup <pr-url>`. It must return a session.
    - Ask the user to open that PR in the browser and confirm the Claude mascot button shows up. If the toolbar icon shows a red "!", its popup has the error.
