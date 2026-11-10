@@ -23,15 +23,16 @@ async function askHelper(message) {
   }
 }
 
-// Opening brings Zed to the front, so the result goes to a macOS notification, not the page.
+// Opening brings another app to the front, so the result goes to a macOS notification, not the page.
 function openResultText(response) {
+  const hint = response.hint ? ` ${response.hint}` : '';
   switch (response.status) {
     case 'opened': {
       const fallback = response.inMainCheckout ? ' The worktree is gone, so it runs in the main checkout.' : '';
-      return `Open a new terminal thread in ${response.place} to resume “${response.title}”.${fallback}`;
+      return `Resuming “${response.title}” in ${response.place}.${fallback}${hint}`;
     }
     case 'running':
-      return `Already running in ${response.place}: “${response.title}”. Pick it in Zed's sidebar.`;
+      return `Already running in ${response.place}: “${response.title}”.${hint}`;
     case 'folder-missing':
       return `The folder of “${response.title}” no longer exists.`;
     case 'not-found':

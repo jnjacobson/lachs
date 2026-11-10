@@ -1,10 +1,11 @@
 #!/bin/sh
-# Resumes Claude sessions in Zed terminal threads.
-#   resume <session-id> <cwd> <repo-root>  leave a resume note, then focus the repo in Zed
-#   focus <repo-root>                      focus the repo in Zed
-#   init                                   Zed's agent.terminal_init_command. If "shell" is set in
-#                                          the config (fish, zsh, bash), Claude starts through it so
-#                                          your `claude` function or alias applies
+# lachs app: resumes Claude sessions in Zed terminal threads.
+#   resume <session-id> <cwd> <repo-root>        leave a resume note, then focus the repo in Zed
+#   focus <session-id> <cwd> <repo-root> <pid>   focus the repo in Zed
+#   init                                         Zed's agent.terminal_init_command. If "shell" is set in
+#                                                the config (fish, zsh, bash), Claude starts through it
+#                                                so your `claude` function or alias applies
+# Setup: steps 4 and 5 of the setup skill (Zed's init command and the shell).
 set -eu
 
 NOTE="$HOME/.local/state/lachs/resume-note"
@@ -36,10 +37,12 @@ case "${1:-}" in
     mkdir -p "$(dirname "$NOTE")"
     printf '%s\n%s\n' "$2" "$3" > "$NOTE.tmp"
     mv "$NOTE.tmp" "$NOTE"
-    exec "$ZED_CLI" -e "$4"
+    echo "Open a new terminal thread to start it."
+    exec "$ZED_CLI" -e "$4" >/dev/null
     ;;
   focus)
-    exec "$ZED_CLI" -e "$2"
+    echo "Pick it in Zed's sidebar."
+    exec "$ZED_CLI" -e "$4" >/dev/null
     ;;
   init)
     claimed="$NOTE.$$"
@@ -54,7 +57,7 @@ case "${1:-}" in
     run_claude
     ;;
   *)
-    echo "usage: lachs-zed resume <session-id> <cwd> <repo-root> | focus <repo-root> | init" >&2
+    echo "usage: lachs-zed resume <session-id> <cwd> <repo-root> | focus <session-id> <cwd> <repo-root> <pid> | init" >&2
     exit 64
     ;;
 esac
