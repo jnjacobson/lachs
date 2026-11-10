@@ -3,9 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "lint": "biome ci . && shellcheck --severity=warning bin/* scripts/*.sh",
+    "format": "biome check --write ."
   },
   "engines": {
     "node": ">=22"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.6"
   }
 }

@@ -26,7 +26,7 @@ if (CLI_COMMANDS.includes(command)) {
 } else {
   readMessage(process.stdin)
     .then(handle)
-    .catch(error => ({ error: error.message }))
+    .catch((error) => ({ error: error.message }))
     .then(writeMessage);
 }
 
@@ -54,13 +54,24 @@ async function open(prUrl) {
   const repoRoot = mainCheckout(session.cwd, repoSlug(prUrl));
   const where = place(session.cwd, repoRoot);
   if (session.running) {
-    const hint = await runApp(app, ['focus', session.sessionId, session.cwd, repoRoot, String(session.pid)]);
+    const hint = await runApp(app, [
+      'focus',
+      session.sessionId,
+      session.cwd,
+      repoRoot,
+      String(session.pid),
+    ]);
     return { status: 'running', title, place: where, hint };
   }
 
   const cwdExists = fs.existsSync(session.cwd);
   if (!cwdExists && !fs.existsSync(repoRoot)) return { status: 'folder-missing', title };
-  const hint = await runApp(app, ['resume', session.sessionId, cwdExists ? session.cwd : repoRoot, repoRoot]);
+  const hint = await runApp(app, [
+    'resume',
+    session.sessionId,
+    cwdExists ? session.cwd : repoRoot,
+    repoRoot,
+  ]);
   return { status: 'opened', title, place: where, inMainCheckout: !cwdExists, hint };
 }
 
@@ -68,13 +79,19 @@ async function open(prUrl) {
 function configuredApp() {
   const config = readJson(CONFIG_FILE) ?? {};
   if ('resume' in config || 'focus' in config) {
-    throw new Error(`"resume" and "focus" in ${CONFIG_FILE} are no longer supported. Move the command into a script and set "app" to its path.`);
+    throw new Error(
+      `"resume" and "focus" in ${CONFIG_FILE} are no longer supported. Move the command into a script and set "app" to its path.`,
+    );
   }
   const name = config.app ?? DEFAULT_APP;
-  const executable = typeof name === 'string' && (name.includes('/') ? appPath(name) : path.join(APPS_DIR, `lachs-${name}`));
+  const executable =
+    typeof name === 'string' &&
+    (name.includes('/') ? appPath(name) : path.join(APPS_DIR, `lachs-${name}`));
   if (executable && isExecutableFile(executable)) return executable;
-  const apps = fs.globSync('lachs-*', { cwd: APPS_DIR }).map(file => file.slice('lachs-'.length));
-  throw new Error(`Unknown app ${JSON.stringify(name)} in ${CONFIG_FILE}. Use one of: ${apps.join(', ')}, or a path to an executable.`);
+  const apps = fs.globSync('lachs-*', { cwd: APPS_DIR }).map((file) => file.slice('lachs-'.length));
+  throw new Error(
+    `Unknown app ${JSON.stringify(name)} in ${CONFIG_FILE}. Use one of: ${apps.join(', ')}, or a path to an executable.`,
+  );
 }
 
 // "~/bin/x" and paths relative to the home folder work too.
@@ -98,8 +115,8 @@ function runApp(app, args) {
     const child = spawn(app, args, { detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';
-    child.stdout.on('data', chunk => (stdout += chunk));
-    child.stderr.on('data', chunk => (stderr += chunk));
+    child.stdout.on('data', (chunk) => (stdout += chunk));
+    child.stderr.on('data', (chunk) => (stderr += chunk));
     const done = () => resolve(stdout.trim() || null);
     const timer = setTimeout(() => {
       child.stdout.destroy();
@@ -107,14 +124,15 @@ function runApp(app, args) {
       child.unref();
       done();
     }, APP_TIMEOUT_MS);
-    child.on('error', error => {
+    child.on('error', (error) => {
       clearTimeout(timer);
       reject(error);
     });
-    child.on('close', code => {
+    child.on('close', (code) => {
       clearTimeout(timer);
       if (code === 0) done();
-      else reject(new Error(`${path.basename(app)} failed: ${stderr.trim() || `exit code ${code}`}`));
+      else
+        reject(new Error(`${path.basename(app)} failed: ${stderr.trim() || `exit code ${code}`}`));
     });
   });
 }
@@ -154,10 +172,14 @@ function mainCheckout(cwd, repo) {
   const claudeWorktree = cwd.match(CLAUDE_WORKTREE);
   if (claudeWorktree) return claudeWorktree[1];
   try {
-    const gitDir = execFileSync('/usr/bin/git', ['-C', cwd, 'rev-parse', '--path-format=absolute', '--git-common-dir'], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
+    const gitDir = execFileSync(
+      '/usr/bin/git',
+      ['-C', cwd, 'rev-parse', '--path-format=absolute', '--git-common-dir'],
+      {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      },
+    ).trim();
     if (gitDir.endsWith('/.git')) return path.dirname(gitDir);
   } catch {
     // The folder is gone or not a git checkout.
@@ -167,8 +189,10 @@ function mainCheckout(cwd, repo) {
 
 function knownCheckout(repo) {
   const repoPaths = readJson(path.join(HOME, '.claude.json'))?.githubRepoPaths ?? {};
-  const key = Object.keys(repoPaths).find(slug => slug.toLowerCase() === repo);
-  return (repoPaths[key] ?? []).find(dir => !CLAUDE_WORKTREE.test(dir) && fs.existsSync(dir)) ?? null;
+  const key = Object.keys(repoPaths).find((slug) => slug.toLowerCase() === repo);
+  return (
+    (repoPaths[key] ?? []).find((dir) => !CLAUDE_WORKTREE.test(dir) && fs.existsSync(dir)) ?? null
+  );
 }
 
 function repoSlug(prUrl) {
