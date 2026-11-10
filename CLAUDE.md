@@ -17,6 +17,7 @@ To set it up on a Mac, use the `setup` skill (`.claude/skills/setup/SKILL.md`).
 ## Commands
 
 - `npm test`
+- `npm run lint`: Biome (JS, JSON, HTML, CSS) and ShellCheck (needs `shellcheck` installed). `npm run format` applies Biome's fixes. CI (`.github/workflows/ci.yml`) runs both.
 - `node helper/host.js lookup <pr-url>` prints what the extension would get. `open` actually opens the session.
 
 ## Rules

@@ -21,7 +21,7 @@ afterEach(() => {
 
 function writeTranscript(file, records) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, records.map(record => JSON.stringify(record)).join('\n') + '\n');
+  fs.writeFileSync(file, `${records.map((record) => JSON.stringify(record)).join('\n')}\n`);
 }
 
 function sessionFile(sessionId, project = '-Users-jan-shop') {
@@ -79,10 +79,13 @@ test('matches the PR URL regardless of case', () => {
 
 test('opens the parent session when a subagent created the PR', () => {
   writeTranscript(sessionFile('parent'), [prLink(PR, '2026-10-30T12:44:23.030Z')]);
-  writeTranscript(path.join(projectsDir, '-Users-jan-shop', 'parent', 'subagents', 'agent-a1.jsonl'), [
-    createCommand('toolu_1', '2026-10-30T12:44:18.000Z'),
-    createResult('toolu_1', '2026-10-30T12:44:23.000Z', [PR]),
-  ]);
+  writeTranscript(
+    path.join(projectsDir, '-Users-jan-shop', 'parent', 'subagents', 'agent-a1.jsonl'),
+    [
+      createCommand('toolu_1', '2026-10-30T12:44:18.000Z'),
+      createResult('toolu_1', '2026-10-30T12:44:23.000Z', [PR]),
+    ],
+  );
 
   assert.equal(findCreatorSession(PR, { projectsDir }).sessionId, 'parent');
 });
@@ -142,7 +145,12 @@ test('does not mistake a PR for one with a longer number', () => {
 test('finds a creation from before compaction', () => {
   writeTranscript(sessionFile('s1'), [
     ...creation('2026-10-09T12:55:17.000Z'),
-    { type: 'system', subtype: 'compact_boundary', parentUuid: null, timestamp: '2026-10-09T14:28:53.000Z' },
+    {
+      type: 'system',
+      subtype: 'compact_boundary',
+      parentUuid: null,
+      timestamp: '2026-10-09T14:28:53.000Z',
+    },
     { type: 'user', isCompactSummary: true, message: { content: 'Summary' } },
   ]);
 
@@ -184,5 +192,8 @@ test('stays in the old session when the handoff never ran', () => {
 });
 
 test('rejects a URL that is not a pull request', () => {
-  assert.throws(() => findCreatorSession('https://github.com/acme/shop', { projectsDir }), TypeError);
+  assert.throws(
+    () => findCreatorSession('https://github.com/acme/shop', { projectsDir }),
+    TypeError,
+  );
 });
