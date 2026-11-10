@@ -40,4 +40,4 @@ done
 
 echo "Extension folder:          $REPO/extension"
 echo "Extension ID:              $EXTENSION_ID"
-echo "Zed terminal_init_command: $REPO/bin/lachs-zed init"
+echo "Zed terminal_init_command: $REPO/bin/lachs-zed init [shell]  (shell, e.g. fish or zsh, starts Claude through it)"

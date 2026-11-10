@@ -9,7 +9,7 @@ To set it up on a Mac, use the `setup` skill (`.claude/skills/setup/SKILL.md`).
 - `extension/`: Chromium MV3 extension (Brave, Chrome). `content.js` adds the button, `background.js` talks to the helper and shows the result as a macOS notification.
 - `helper/finder.js`: finds the creating session in `~/.claude/projects`.
 - `helper/host.js`: native messaging host. Looks up sessions, checks `~/.claude/sessions` for running ones, starts the open command.
-- `bin/lachs-zed`: `resume` leaves a note and focuses Zed, `focus` only focuses it; `init` is Zed's `agent.terminal_init_command` and resumes the note.
+- `bin/lachs-zed`: `resume` leaves a note and focuses Zed, `focus` only focuses it; `init [shell]` is Zed's `agent.terminal_init_command` and resumes the note; a shell (fish, zsh, bash) starts Claude through it so the user's `claude` function or alias applies.
 - `scripts/install.sh`: registers the native host for Brave and Chrome.
 
 ## Commands
