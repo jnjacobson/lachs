@@ -2,8 +2,8 @@
 # Resumes Claude sessions in Zed terminal threads.
 #   resume <session-id> <cwd> <repo-root>  leave a resume note, then focus the repo in Zed
 #   focus <repo-root>                      focus the repo in Zed
-#   init [shell]                           Zed's agent.terminal_init_command; with a shell
-#                                          (fish, zsh, bash), Claude starts through it so
+#   init                                   Zed's agent.terminal_init_command. If "shell" is set in
+#                                          the config (fish, zsh, bash), Claude starts through it so
 #                                          your `claude` function or alias applies
 set -eu
 
@@ -11,10 +11,17 @@ NOTE="$HOME/.local/state/lachs/resume-note"
 # Zed also runs the init command when it restores saved threads; only a fresh note counts.
 NOTE_MAX_AGE_SECONDS=60
 ZED_CLI=/Applications/Zed.app/Contents/MacOS/cli
+CONFIG="${LACHS_CONFIG:-$HOME/.config/lachs/config.json}"
+
+# The "shell" value from the config, or nothing when unset or unreadable.
+configured_shell() {
+  [ -f "$CONFIG" ] || return 0
+  node -e 'try { const s = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).shell; if (typeof s === "string") console.log(s) } catch {}' "$CONFIG" 2>/dev/null || true
+}
 
 # Starts claude with the given args, through the configured shell when there is one.
 run_claude() {
-  shell="${LACHS_SHELL:-}"
+  shell=$(configured_shell)
   if [ -n "$shell" ] && command -v "$shell" >/dev/null 2>&1; then
     case "$(basename "$shell")" in
       fish) exec "$shell" -c 'claude $argv' -- "$@" ;;
@@ -35,7 +42,6 @@ case "${1:-}" in
     exec "$ZED_CLI" -e "$2"
     ;;
   init)
-    LACHS_SHELL="${2:-}"
     claimed="$NOTE.$$"
     if mv "$NOTE" "$claimed" 2>/dev/null; then
       age=$(( $(date +%s) - $(stat -f %m "$claimed") ))
@@ -48,7 +54,7 @@ case "${1:-}" in
     run_claude
     ;;
   *)
-    echo "usage: lachs-zed resume <session-id> <cwd> <repo-root> | focus <repo-root> | init [shell]" >&2
+    echo "usage: lachs-zed resume <session-id> <cwd> <repo-root> | focus <repo-root> | init" >&2
     exit 64
     ;;
 esac
