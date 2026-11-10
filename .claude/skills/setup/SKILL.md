@@ -17,8 +17,8 @@ Run every step. All of them are safe to repeat.
    - Check `~/.config/zed/keymap.json` for a binding to `agent::NewTerminalThread`. If there is none, tell the user to bind one, because resuming waits for that key press.
 
 4. **Set the shell for `claude`.** Terminal threads start from `sh`, so a `claude` function or alias in the user's shell (for example one that picks the config dir per project) is bypassed unless `shell` is set in `~/.config/lachs/config.json`.
-   - Run `"$SHELL" -ic 'type claude' 2>&1`. In fish use `type claude`; in zsh and bash `type claude` reports "function" or "alias" when one exists.
-   - If `claude` resolves to a function or alias, set `"shell"` to the basename of `$SHELL` (`fish`, `zsh` or `bash`). Skip other shells and tell the user.
+   - Use the login shell, not `$SHELL`: Claude's Bash tool can run in another shell. Get it with `dscl . -read ~ UserShell`, then run `<login shell> -ic 'type claude' 2>&1`. It reports "function" or "alias" when one exists.
+   - If `claude` resolves to a function or alias, set `"shell"` to the basename of the login shell (`fish`, `zsh` or `bash`). Skip other shells and tell the user.
    - If it resolves to the plain binary (`~/.local/bin/claude`), leave `shell` unset, and remove a stale `shell` entry only after asking.
    - Create the file with `mkdir -p ~/.config/lachs` if needed. Merge into existing JSON and keep other keys such as `resume` and `focus`. If a different `shell` is already set, ask before replacing it.
 
