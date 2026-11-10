@@ -43,25 +43,35 @@ export function findCreatorSession(prUrl, { projectsDir }) {
 
 function prLinkTimes(file, target) {
   return recordsContaining(fs.readFileSync(file), '"prUrl":"')
-    .filter(record => record.type === 'pr-link' && record.prUrl?.toLowerCase() === target)
-    .map(record => Date.parse(record.timestamp));
+    .filter((record) => record.type === 'pr-link' && record.prUrl?.toLowerCase() === target)
+    .map((record) => Date.parse(record.timestamp));
 }
 
 function creationTimes(file, target) {
   const subagentDir = path.join(file.slice(0, -'.jsonl'.length), 'subagents');
-  const subagentFiles = fs.globSync('*.jsonl', { cwd: subagentDir }).map(name => path.join(subagentDir, name));
+  const subagentFiles = fs
+    .globSync('*.jsonl', { cwd: subagentDir })
+    .map((name) => path.join(subagentDir, name));
   const times = [];
   for (const transcript of [file, ...subagentFiles]) {
     const createCommandIds = new Set();
-    const lines = line => PR_CREATE_COMMAND.test(line) || line.includes('"gitOperation"');
+    const lines = (line) => PR_CREATE_COMMAND.test(line) || line.includes('"gitOperation"');
     for (const record of readRecords(transcript, lines)) {
       for (const block of contentBlocks(record)) {
-        if (record.type === 'assistant' && block.type === 'tool_use' && block.name === 'Bash'
-          && PR_CREATE_COMMAND.test(block.input?.command ?? '')) {
+        if (
+          record.type === 'assistant' &&
+          block.type === 'tool_use' &&
+          block.name === 'Bash' &&
+          PR_CREATE_COMMAND.test(block.input?.command ?? '')
+        ) {
           createCommandIds.add(block.id);
         }
-        if (record.type === 'user' && block.type === 'tool_result'
-          && createCommandIds.has(block.tool_use_id) && reportsCreatedPr(record, target)) {
+        if (
+          record.type === 'user' &&
+          block.type === 'tool_result' &&
+          createCommandIds.has(block.tool_use_id) &&
+          reportsCreatedPr(record, target)
+        ) {
           times.push(Date.parse(record.timestamp));
         }
       }
@@ -75,7 +85,7 @@ function reportsCreatedPr(record, target) {
   const result = record.toolUseResult;
   if (result?.gitOperation?.pr?.action !== 'created') return false;
   const urls = (result.stdout ?? '').match(PR_URL) ?? [];
-  return urls.some(url => url.toLowerCase() === target);
+  return urls.some((url) => url.toLowerCase() === target);
 }
 
 function followHandoffs(file) {
@@ -96,11 +106,12 @@ function followHandoffs(file) {
 
 function readSession(file) {
   const buffer = fs.readFileSync(file);
-  const last = marker => recordsContaining(buffer, marker).at(-1);
+  const last = (marker) => recordsContaining(buffer, marker).at(-1);
   const sessionId = path.basename(file, '.jsonl');
   return {
     sessionId,
-    title: last('"type":"custom-title"')?.customTitle || last('"type":"ai-title"')?.aiTitle || sessionId,
+    title:
+      last('"type":"custom-title"')?.customTitle || last('"type":"ai-title"')?.aiTitle || sessionId,
     cwd: lastCwd(buffer),
     continuedIn: last('"type":"continued-in"')?.continuedInSessionId ?? null,
   };
