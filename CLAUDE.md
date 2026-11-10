@@ -9,7 +9,7 @@ To set it up on a Mac, use the `setup` skill (`.claude/skills/setup/SKILL.md`).
 - `extension/`: Chromium MV3 extension (Brave, Chrome). `content.js` adds the button, `background.js` talks to the helper and shows the result as a macOS notification.
 - `helper/finder.js`: finds the creating session in `~/.claude/projects`.
 - `helper/host.js`: native messaging host. Looks up sessions, checks `~/.claude/sessions` for running ones, starts the open command.
-- `bin/lachs-zed`: `resume` leaves a note and focuses Zed, `focus` only focuses it; `init` is Zed's `agent.terminal_init_command` and resumes the note.
+- `bin/lachs-zed`: `resume` leaves a note and focuses Zed, `focus` only focuses it; `init` is Zed's `agent.terminal_init_command` and resumes the note. If `shell` is set in the config, Claude starts through that shell so the user's `claude` function or alias applies.
 - `scripts/install.sh`: registers the native host for Brave and Chrome.
 
 ## Commands
@@ -21,4 +21,4 @@ To set it up on a Mac, use the `setup` skill (`.claude/skills/setup/SKILL.md`).
 
 - Bump `version` in `extension/manifest.json` with every extension change. The helper reports that version, and the extension reloads itself when it differs.
 - Never put the literal text `gh pr create` in a Bash command, for example when grepping transcripts. Claude Code then links your own session to whatever PR URL the output contains. Use `gh pr creat[e]`.
-- Open commands are templates. `~/.config/lachs/config.json` can override `resume` and `focus`, with `{sessionId}`, `{cwd}` and `{repoRoot}` placeholders.
+- Open commands are templates. `~/.config/lachs/config.json` can override `resume` and `focus`, with `{sessionId}`, `{cwd}` and `{repoRoot}` placeholders, and set `shell` (`fish`, `zsh`, `bash`) for `lachs-zed init`.
