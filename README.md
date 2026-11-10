@@ -1,5 +1,7 @@
 # lachs
 
+> lachs (German for "salmon", pronounced /laks/)
+
 Swims upstream from a GitHub pull request to the local Claude Code session that spawned it.
 
 On a PR page, a Claude mascot button appears if this Mac has the session that ran `gh pr create`. Clicking it resumes that session in the configured app (see [Apps](#apps)); by default a new Terminal.app window resumes it. If the session is already running, a macOS notification says so instead of starting a second copy.
