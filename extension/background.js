@@ -3,7 +3,7 @@ const NATIVE_HOST = 'com.jnjacobson.lachs';
 chrome.action.setBadgeBackgroundColor({ color: '#d1242f' });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  askHelper(message).then(response => {
+  askHelper(message).then((response) => {
     if (message.type === 'open') notify(openResultText(response));
     sendResponse(response);
   });
@@ -28,7 +28,9 @@ function openResultText(response) {
   const hint = response.hint ? ` ${response.hint}` : '';
   switch (response.status) {
     case 'opened': {
-      const fallback = response.inMainCheckout ? ' The worktree is gone, so it runs in the main checkout.' : '';
+      const fallback = response.inMainCheckout
+        ? ' The worktree is gone, so it runs in the main checkout.'
+        : '';
       return `Resuming “${response.title}” in ${response.place}.${fallback}${hint}`;
     }
     case 'running':
@@ -43,7 +45,12 @@ function openResultText(response) {
 }
 
 function notify(message) {
-  chrome.notifications.create({ type: 'basic', iconUrl: 'icons/icon-128.png', title: 'lachs', message });
+  chrome.notifications.create({
+    type: 'basic',
+    iconUrl: 'icons/icon-128.png',
+    title: 'lachs',
+    message,
+  });
 }
 
 async function setStatus(error) {
@@ -58,7 +65,9 @@ async function reloadIfOutdated(diskVersion) {
   if (!diskVersion || diskVersion === loadedVersion) return;
   const { reloadedFor } = await chrome.storage.local.get('reloadedFor');
   if (reloadedFor === diskVersion) {
-    throw new Error(`Loaded extension ${loadedVersion} differs from ${diskVersion} on disk. Reload it on the extensions page.`);
+    throw new Error(
+      `Loaded extension ${loadedVersion} differs from ${diskVersion} on disk. Reload it on the extensions page.`,
+    );
   }
   await chrome.storage.local.set({ reloadedFor: diskVersion });
   chrome.runtime.reload();

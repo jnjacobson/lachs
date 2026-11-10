@@ -21,7 +21,10 @@ const MASCOT = [
 let current = null;
 let updateScheduled = false;
 
-new MutationObserver(scheduleUpdate).observe(document.documentElement, { childList: true, subtree: true });
+new MutationObserver(scheduleUpdate).observe(document.documentElement, {
+  childList: true,
+  subtree: true,
+});
 scheduleUpdate();
 
 // GitHub navigates without page loads and re-renders the header, so this runs on every DOM change.
@@ -64,7 +67,8 @@ function createButton(session) {
   const button = document.createElement('button');
   button.id = BUTTON_ID;
   button.type = 'button';
-  button.className = 'Button Button--iconOnly Button--invisible Button--medium tooltipped tooltipped-s';
+  button.className =
+    'Button Button--iconOnly Button--invisible Button--medium tooltipped tooltipped-s';
   button.setAttribute('aria-label', tooltip(session));
   button.append(mascotIcon());
   button.addEventListener('click', () => openSession(button));
