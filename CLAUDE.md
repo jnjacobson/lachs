@@ -7,7 +7,7 @@ To set it up on a Mac, use the `setup` skill (`.claude/skills/setup/SKILL.md`).
 ## Layout
 
 - `extension/`: Chromium MV3 extension (Brave, Chrome). `content.js` adds the button, `background.js` talks to the helper and shows the result as a macOS notification.
-- `helper/finder.js`: finds the creating session in `~/.claude/projects`.
+- `helper/finder.js`: finds the creating session in `~/.claude/projects`. Which PRs each transcript created is cached per file (size and mtime) in `~/.cache/lachs/index.json`; whether a session is running is never cached.
 - `helper/host.js`: native messaging host. Looks up sessions, checks `~/.claude/sessions` for running ones, starts the configured app.
 - `bin/lachs-<app>`: the apps, all with the interface in README.md ("Apps"). Add an app by adding a script; nothing else needs a list of them.
 - `bin/lachs-zed`: `resume` leaves a note and focuses Zed, `focus` only focuses it; `init` is Zed's `agent.terminal_init_command` and resumes the note. If `shell` is set in the config, Claude starts through that shell so the user's `claude` function or alias applies.

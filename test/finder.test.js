@@ -10,9 +10,11 @@ const OTHER_PR = 'https://github.com/acme/shop/pull/195';
 const CREATE = 'gh pr create --draft --title "Add cart"';
 
 let projectsDir;
+let indexFile;
 
 beforeEach(() => {
   projectsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lachs-test-'));
+  indexFile = path.join(projectsDir, 'cache', 'index.json');
 });
 
 afterEach(() => {
@@ -196,4 +198,90 @@ test('rejects a URL that is not a pull request', () => {
     () => findCreatorSession('https://github.com/acme/shop', { projectsDir }),
     TypeError,
   );
+});
+
+test.describe('with an index', () => {
+  const lookup = (url = PR) => findCreatorSession(url, { projectsDir, indexFile });
+
+  // Whole seconds survive every file system's timestamp precision.
+  const FIXED_MTIME = 1_790_000_000;
+
+  function setMtime(file) {
+    fs.utimesSync(file, FIXED_MTIME, FIXED_MTIME);
+  }
+
+  function blankOut(file) {
+    fs.writeFileSync(file, ' '.repeat(fs.statSync(file).size));
+    setMtime(file);
+  }
+
+  test('finds the same session as without one', () => {
+    writeTranscript(sessionFile('s1'), creation('2026-10-09T12:55:17.000Z'));
+
+    assert.deepEqual(lookup(), findCreatorSession(PR, { projectsDir }));
+    assert.equal(lookup().sessionId, 's1');
+  });
+
+  test('does not read an unchanged transcript again', () => {
+    const file = sessionFile('s1');
+    writeTranscript(file, creation('2026-10-09T12:55:17.000Z'));
+    setMtime(file);
+    lookup();
+
+    blankOut(file);
+
+    assert.equal(lookup().sessionId, 's1');
+  });
+
+  test('answers other PRs of an indexed transcript', () => {
+    writeTranscript(sessionFile('s1'), [
+      createCommand('toolu_1', '2026-10-09T12:55:07.000Z', `${CREATE}; ${CREATE}`),
+      prLink(PR, '2026-10-09T12:55:17.000Z'),
+      createResult('toolu_1', '2026-10-09T12:55:17.700Z', [OTHER_PR, PR]),
+      prLink(OTHER_PR, '2026-10-10T08:00:00.000Z'),
+    ]);
+    lookup();
+
+    assert.equal(lookup(OTHER_PR).sessionId, 's1');
+  });
+
+  test('reads a transcript again once it has grown', () => {
+    const file = sessionFile('s1');
+    writeTranscript(file, [{ type: 'user', cwd: '/Users/jan/shop', message: { content: 'hi' } }]);
+    assert.equal(lookup(), null);
+
+    fs.appendFileSync(
+      file,
+      `${creation('2026-10-09T12:55:17.000Z')
+        .map((record) => JSON.stringify(record))
+        .join('\n')}\n`,
+    );
+
+    assert.equal(lookup().sessionId, 's1');
+  });
+
+  test('forgets a deleted transcript', () => {
+    const file = sessionFile('s1');
+    writeTranscript(file, creation('2026-10-09T12:55:17.000Z'));
+    lookup();
+
+    fs.rmSync(file);
+
+    assert.equal(lookup(), null);
+  });
+
+  test('ignores an index it cannot read', () => {
+    writeTranscript(sessionFile('s1'), creation('2026-10-09T12:55:17.000Z'));
+    fs.mkdirSync(path.dirname(indexFile), { recursive: true });
+    fs.writeFileSync(indexFile, '{ not json');
+
+    assert.equal(lookup().sessionId, 's1');
+  });
+
+  test('still works when the index cannot be written', () => {
+    writeTranscript(sessionFile('s1'), creation('2026-10-09T12:55:17.000Z'));
+    fs.mkdirSync(indexFile, { recursive: true });
+
+    assert.equal(lookup().sessionId, 's1');
+  });
 });
