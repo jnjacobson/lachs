@@ -1,0 +1,61 @@
+#!/bin/sh
+# lachs app: resumes Claude sessions in Terminal.app.
+#   resume <session-id> <cwd> <repo-root>        open a new Terminal window that resumes the session
+#   focus <session-id> <cwd> <repo-root> <pid>   bring the Terminal tab running that Claude process to the front
+# Terminal runs your login shell interactively, so your `claude` function or alias applies.
+# Setup: none. On the first click, macOS asks whether the browser may control Terminal; allow it.
+set -eu
+
+# Single quotes mean the same in sh, bash, zsh and fish, as long as the value has no backslash.
+quote() {
+  printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
+}
+
+case "${1:-}" in
+  resume)
+    # Activating a stopped Terminal opens a default window; `launch` opens none, so do script makes the only one.
+    exec osascript - "cd $(quote "$3") && claude --resume $(quote "$2")" <<'EOF'
+on run argv
+  tell application "Terminal"
+    launch
+    do script (item 1 of argv)
+    activate
+  end tell
+end run
+EOF
+    ;;
+  focus)
+    not_found="It isn't in a Terminal tab; look where you started it."
+    tty=$(ps -o tty= -p "$5" | tr -d ' ')
+    if [ -z "$tty" ] || [ "$tty" = "??" ]; then
+      echo "$not_found"
+      exit 0
+    fi
+    exec osascript - "/dev/$tty" "$not_found" <<'EOF'
+on run argv
+  set wanted to item 1 of argv
+  if application "Terminal" is not running then return item 2 of argv
+  tell application "Terminal"
+    repeat with candidate in windows
+      set hits to (tabs of candidate whose tty is wanted)
+      if hits is not {} then
+        -- By id: restoring reorders the windows, which would move an index-based reference.
+        set w to window id (id of candidate)
+        -- A window restored before activating stays behind the others.
+        activate
+        set miniaturized of w to false
+        set selected of item 1 of hits to true
+        set index of w to 1
+        return ""
+      end if
+    end repeat
+  end tell
+  return item 2 of argv
+end run
+EOF
+    ;;
+  *)
+    echo "usage: lachs-terminal resume <session-id> <cwd> <repo-root> | focus <session-id> <cwd> <repo-root> <pid>" >&2
+    exit 64
+    ;;
+esac

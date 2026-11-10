@@ -7,7 +7,7 @@ description: Install or update lachs on this Mac (native host, Zed init command,
 
 Run every step. All of them are safe to repeat.
 
-1. **Pick the app.** Read `app` from `~/.config/lachs/config.json` (default `zed`). If it is unset, list the apps in `bin/lachs-*` (see "Apps" in README.md) and ask which one should open sessions. Write the choice into the config, even `zed`, so a rerun doesn't ask again: create it with `mkdir -p ~/.config/lachs` if needed, merge into existing JSON and keep other keys.
+1. **Pick the app.** Read `app` from `~/.config/lachs/config.json` (default `terminal`). If it is unset, list the apps in `bin/lachs-*` (see "Apps" in README.md) and ask which one should open sessions. Write the choice into the config, even the default, so a rerun doesn't ask again: create it with `mkdir -p ~/.config/lachs` if needed, merge into existing JSON and keep other keys.
 
 2. **Check prerequisites.** `node` is on PATH, Brave or Chrome is installed, and the app the script drives exists (e.g. `/Applications/Zed.app` for `zed`). Stop and tell the user what is missing.
 

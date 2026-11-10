@@ -15,7 +15,7 @@ const CONFIG_FILE = path.join(HOME, '.config', 'lachs', 'config.json');
 const CLAUDE_WORKTREE = /^(.+?)\/\.claude\/worktrees\/([^/]+)/;
 // An app is an executable, bin/lachs-<name>, picked by "app" in the config. See README.md.
 const APPS_DIR = path.join(REPO, 'bin');
-const DEFAULT_APP = 'zed';
+const DEFAULT_APP = 'terminal';
 const APP_TIMEOUT_MS = 5000;
 
 // Browsers start the host with arguments of their own, so anything else means native messaging.
