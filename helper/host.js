@@ -10,6 +10,7 @@ import { findCreatorSession, normalizePrUrl } from './finder.js';
 const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const HOME = os.homedir();
 const PROJECTS_DIR = path.join(HOME, '.claude', 'projects');
+const INDEX_FILE = path.join(HOME, '.cache', 'lachs', 'index.json');
 const RUNNING_SESSIONS_DIR = path.join(HOME, '.claude', 'sessions');
 const CONFIG_FILE = path.join(HOME, '.config', 'lachs', 'config.json');
 const CLAUDE_WORKTREE = /^(.+?)\/\.claude\/worktrees\/([^/]+)/;
@@ -38,7 +39,7 @@ async function handle(message) {
 }
 
 function lookup(prUrl) {
-  const session = findCreatorSession(prUrl, { projectsDir: PROJECTS_DIR });
+  const session = findCreatorSession(prUrl, { projectsDir: PROJECTS_DIR, indexFile: INDEX_FILE });
   if (!session) return null;
   const pid = runningPid(session.sessionId);
   return { ...session, running: pid !== null, pid };

@@ -60,7 +60,7 @@ Whatever it prints to stdout is added to the notification, so print what the use
 
 ## How it works
 
-The extension asks a local helper, registered as a native messaging host, which session created the PR. The helper searches the transcripts in `~/.claude/projects` for the PR's URL and checks `~/.claude/sessions` to see whether that session is still running. Nothing leaves your Mac.
+The extension asks a local helper, registered as a native messaging host, which session created the PR. The helper searches the transcripts in `~/.claude/projects` for the PR's URL, using an index in `~/.cache/lachs/index.json` so only new or changed transcripts are read (delete it to rebuild; the first lookup after that takes a second or so), and checks `~/.claude/sessions` to see whether that session is still running. Nothing leaves your Mac.
 
 Only sessions under `~/.claude` are found. Sessions from a different `CLAUDE_CONFIG_DIR` aren't.
 

@@ -11,25 +11,18 @@ export function normalizePrUrl(url) {
   return `https://github.com/${match[1]}/${match[2]}/pull/${match[3]}`.toLowerCase();
 }
 
+const INDEX_VERSION = 1;
+
 /**
  * Finds the session that ran `gh pr create` for this PR.
  * Returns null when no transcript on this machine created it.
+ *
+ * Transcripts are big, so which PRs each one created is cached in `indexFile`
+ * and only transcripts whose size or mtime changed are read again.
  */
-export function findCreatorSession(prUrl, { projectsDir }) {
+export function findCreatorSession(prUrl, { projectsDir, indexFile }) {
   const target = normalizePrUrl(prUrl);
-  let creator = null;
-  for (const file of fs.globSync('*/*.jsonl', { cwd: projectsDir })) {
-    const transcript = path.join(projectsDir, file);
-    const linkTimes = prLinkTimes(transcript, target);
-    if (linkTimes.length === 0) continue;
-    const createdTimes = creationTimes(transcript, target);
-    if (createdTimes.length === 0) continue;
-    // Forks copy the creation, but no pr-links, so the original linked the PR first.
-    const linkedAt = Math.min(...linkTimes);
-    if (!creator || linkedAt < creator.linkedAt) {
-      creator = { transcript, linkedAt, createdAt: Math.min(...createdTimes) };
-    }
-  }
+  const creator = findCreator(target, projectsDir, indexFile);
   if (!creator) return null;
 
   const session = followHandoffs(creator.transcript);
@@ -41,18 +34,88 @@ export function findCreatorSession(prUrl, { projectsDir }) {
   };
 }
 
-function prLinkTimes(file, target) {
-  return recordsContaining(fs.readFileSync(file), '"prUrl":"')
-    .filter((record) => record.type === 'pr-link' && record.prUrl?.toLowerCase() === target)
-    .map((record) => Date.parse(record.timestamp));
+function findCreator(target, projectsDir, indexFile) {
+  const known = readIndex(indexFile);
+  const files = {};
+  let changed = false;
+  let creator = null;
+  for (const file of fs.globSync('*/*.jsonl', { cwd: projectsDir })) {
+    const transcript = path.join(projectsDir, file);
+    const stat = fs.statSync(transcript);
+    const mtimeMs = Math.floor(stat.mtimeMs);
+    const { size } = stat;
+    let entry = known[file];
+    if (entry?.mtimeMs !== mtimeMs || entry.size !== size) {
+      entry = { mtimeMs, size, prs: scanTranscript(transcript) };
+      changed = true;
+    }
+    files[file] = entry;
+
+    const created = entry.prs[target];
+    // Forks copy the creation, but no pr-links, so the original linked the PR first.
+    if (created && (!creator || created.linkedAt < creator.linkedAt)) {
+      creator = { transcript, ...created };
+    }
+  }
+  if (changed || Object.keys(known).length !== Object.keys(files).length) {
+    writeIndex(indexFile, files);
+  }
+  return creator;
 }
 
-function creationTimes(file, target) {
+// Which PRs this transcript created: { [prUrl]: { linkedAt, createdAt } }.
+function scanTranscript(file) {
+  const linkTimes = prLinkTimes(file);
+  if (linkTimes.size === 0) return {};
+  const createdTimes = creationTimes(file);
+  const prs = {};
+  for (const [url, links] of linkTimes) {
+    const created = createdTimes.get(url);
+    if (created) prs[url] = { linkedAt: Math.min(...links), createdAt: Math.min(...created) };
+  }
+  return prs;
+}
+
+function readIndex(indexFile) {
+  if (!indexFile) return {};
+  try {
+    const index = JSON.parse(fs.readFileSync(indexFile, 'utf8'));
+    return index.version === INDEX_VERSION ? index.files : {};
+  } catch {
+    return {};
+  }
+}
+
+// The index is only a cache, so a failed write just means scanning again next time.
+function writeIndex(indexFile, files) {
+  if (!indexFile) return;
+  const temporary = `${indexFile}.${process.pid}.tmp`;
+  try {
+    fs.mkdirSync(path.dirname(indexFile), { recursive: true });
+    fs.writeFileSync(temporary, JSON.stringify({ version: INDEX_VERSION, files }));
+    fs.renameSync(temporary, indexFile);
+  } catch {
+    fs.rmSync(temporary, { force: true });
+  }
+}
+
+// Link times per PR URL (lowercase).
+function prLinkTimes(file) {
+  const times = new Map();
+  for (const record of recordsContaining(fs.readFileSync(file), '"prUrl":"')) {
+    if (record.type !== 'pr-link' || typeof record.prUrl !== 'string') continue;
+    pushTo(times, record.prUrl.toLowerCase(), Date.parse(record.timestamp));
+  }
+  return times;
+}
+
+// Creation times per PR URL (lowercase).
+function creationTimes(file) {
   const subagentDir = path.join(file.slice(0, -'.jsonl'.length), 'subagents');
   const subagentFiles = fs
     .globSync('*.jsonl', { cwd: subagentDir })
     .map((name) => path.join(subagentDir, name));
-  const times = [];
+  const times = new Map();
   for (const transcript of [file, ...subagentFiles]) {
     const createCommandIds = new Set();
     const lines = (line) => PR_CREATE_COMMAND.test(line) || line.includes('"gitOperation"');
@@ -69,10 +132,9 @@ function creationTimes(file, target) {
         if (
           record.type === 'user' &&
           block.type === 'tool_result' &&
-          createCommandIds.has(block.tool_use_id) &&
-          reportsCreatedPr(record, target)
+          createCommandIds.has(block.tool_use_id)
         ) {
-          times.push(Date.parse(record.timestamp));
+          for (const url of createdPrUrls(record)) pushTo(times, url, Date.parse(record.timestamp));
         }
       }
     }
@@ -81,11 +143,16 @@ function creationTimes(file, target) {
 }
 
 // One gh call can create several PRs; gitOperation only names the last one.
-function reportsCreatedPr(record, target) {
+function createdPrUrls(record) {
   const result = record.toolUseResult;
-  if (result?.gitOperation?.pr?.action !== 'created') return false;
-  const urls = (result.stdout ?? '').match(PR_URL) ?? [];
-  return urls.some((url) => url.toLowerCase() === target);
+  if (result?.gitOperation?.pr?.action !== 'created') return [];
+  return (result.stdout ?? '').match(PR_URL)?.map((url) => url.toLowerCase()) ?? [];
+}
+
+function pushTo(map, key, value) {
+  const values = map.get(key);
+  if (values) values.push(value);
+  else map.set(key, [value]);
 }
 
 function followHandoffs(file) {
