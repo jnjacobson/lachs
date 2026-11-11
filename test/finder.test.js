@@ -73,6 +73,17 @@ test('finds the session that created the PR', () => {
   });
 });
 
+test('finds a creation on a later line of a multi-line command', () => {
+  const at = '2026-10-09T12:55:17.000Z';
+  writeTranscript(sessionFile('s1'), [
+    createCommand('toolu_1', at, `set -e\ngit push -u origin HEAD\n${CREATE}`),
+    prLink(PR, at),
+    createResult('toolu_1', at, [PR]),
+  ]);
+
+  assert.equal(findCreatorSession(PR, { projectsDir }).sessionId, 's1');
+});
+
 test('matches the PR URL regardless of case', () => {
   writeTranscript(sessionFile('s1'), creation('2026-10-09T12:55:17.000Z'));
 

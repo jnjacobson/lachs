@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const PR_CREATE_COMMAND = /\bgh\s+pr\s+create\b/;
+// No \b before gh: raw JSON lines escape newlines, so a later line of a command starts with `\ngh`.
+const PR_CREATE_COMMAND = /gh\s+pr\s+create\b/;
 const PR_URL = /https:\/\/github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/(\d+)/gi;
 const NEWLINE = 0x0a;
 
@@ -11,7 +12,7 @@ export function normalizePrUrl(url) {
   return `https://github.com/${match[1]}/${match[2]}/pull/${match[3]}`.toLowerCase();
 }
 
-const INDEX_VERSION = 1;
+const INDEX_VERSION = 2;
 
 /**
  * Finds the session that ran `gh pr create` for this PR.
