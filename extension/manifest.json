@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "lachs",
-  "version": "0.1.8",
+  "version": "0.1.16",
   "description": "Opens the local Claude Code session that created a GitHub pull request.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3k7MaRXUCREXBWwBPV9N5ghzVie1rs7p0UQ6ottDx9AOCW3q/fIIyHGBU8HDseN7VmcRW/JLwYWyx4Khmqc8RJYpMOS0KfnTwDAjp0XlUQFYcKdxtUqSK0tk61b4usjqtAWfAWRzIr1imJYdbCAm7MfeiDPOCuCwd++avfnFTXdl13JnZ/ZyYcDdjLSWRFTHxS2piFd56gLPKJBjLqQGGNsXrQAY2gC+qj3x6SJ9PQWvvsb1qKGUqr1S60FL9KcI10dFJGh+pvzVCkiMl0RNuj4Z/ua0hS38Ep6G2Yo//AO3K7BWC/umWuYlvcZa8MrObalTuiqhSFj4AcHcQwAEbwIDAQAB",
   "icons": {
@@ -17,7 +17,7 @@
   "content_scripts": [
     {
       "matches": ["https://github.com/*"],
-      "js": ["content.js"]
+      "js": ["content.js", "ask.js"]
     }
   ],
   "action": {
