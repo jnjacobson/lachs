@@ -1,9 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const PR_CREATE_COMMAND = /\bgh\s+pr\s+create\b/;
-// Raw JSON lines escape newlines, so `\ngh pr create` has no word boundary before gh.
-const PR_CREATE_LINE = /gh\s+pr\s+create\b/;
+// No \b before gh: raw JSON lines escape newlines, so a later line of a command starts with `\ngh`.
+const PR_CREATE_COMMAND = /gh\s+pr\s+create\b/;
 const PR_URL = /https:\/\/github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/(\d+)/gi;
 const NEWLINE = 0x0a;
 
@@ -120,7 +119,7 @@ function creationTimes(file) {
   const times = new Map();
   for (const transcript of [file, ...subagentFiles]) {
     const createCommandIds = new Set();
-    const lines = (line) => PR_CREATE_LINE.test(line) || line.includes('"gitOperation"');
+    const lines = (line) => PR_CREATE_COMMAND.test(line) || line.includes('"gitOperation"');
     for (const record of readRecords(transcript, lines)) {
       for (const block of contentBlocks(record)) {
         if (
