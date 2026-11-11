@@ -12,6 +12,12 @@ Open a pull request on GitHub. If a Claude Code session on this Mac ran `gh pr c
 
 If the session is already running, a macOS notification says so instead of starting a second copy. If something goes wrong, the toolbar icon shows a red "!" and its popup has the error.
 
+### Ask Claude
+
+On the *Files changed* tab, GitHub's comment forms for lines and for whole files get an *Ask Claude* button. It sends what you typed as a question to the session that created the PR, and the answer appears below the lines or above the file's diff. Nothing is posted to GitHub. *Discard* deletes an answer.
+
+Each question runs in a throwaway fork of the session, so the session itself and `/resume` stay untouched. The fork knows everything the session did, can read and search files, but has no shell and can't change anything. Earlier questions on the same PR are part of the prompt. An answer takes 10 to 30 seconds and uses the session's model. Answers are kept in `~/.local/state/lachs/answers/`; one whose lines changed since is marked *Outdated*.
+
 ## Setup
 
 You need macOS, Brave or Chrome, Node 24 or newer and Claude Code.
@@ -72,4 +78,4 @@ npm run lint     # Biome and ShellCheck (needs shellcheck installed)
 npm run format   # apply Biome's fixes
 ```
 
-CI runs both on every push and pull request. `node helper/host.js lookup <pr-url>` prints what the extension would get for a PR.
+CI runs both on every push and pull request. `node helper/host.js lookup <pr-url>` prints what the extension would get for a PR, `node helper/host.js ask <pr-url> <file> <line>[-<line>]|file <question>` asks a question like *Ask Claude* does.

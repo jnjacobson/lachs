@@ -46,8 +46,10 @@ async function update() {
     const response = await send({ type: 'lookup', prUrl });
     if (current?.prUrl !== prUrl) return;
     current.session = response.session ?? null;
+    if (current.session) showAnswers(prUrl, response.answers ?? []);
   }
   placeButton();
+  placeAsk();
 }
 
 function currentPrUrl() {
@@ -85,11 +87,11 @@ function tooltip(session) {
   return `Open Claude session\n${session.title}\nCreated ${created}${status}`;
 }
 
-function mascotIcon() {
+function mascotIcon(width = 24) {
   const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('viewBox', '1 0 16 10');
-  svg.setAttribute('width', '24');
-  svg.setAttribute('height', '15');
+  svg.setAttribute('width', String(width));
+  svg.setAttribute('height', String(Math.round((width * 10) / 16)));
   svg.setAttribute('shape-rendering', 'crispEdges');
   svg.setAttribute('aria-hidden', 'true');
   for (const block of MASCOT) {
