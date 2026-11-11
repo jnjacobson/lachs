@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const PR_CREATE_COMMAND = /\bgh\s+pr\s+create\b/;
+// Raw JSON lines escape newlines, so `\ngh pr create` has no word boundary before gh.
+const PR_CREATE_LINE = /gh\s+pr\s+create\b/;
 const PR_URL = /https:\/\/github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/(\d+)/gi;
 const NEWLINE = 0x0a;
 
@@ -11,7 +13,7 @@ export function normalizePrUrl(url) {
   return `https://github.com/${match[1]}/${match[2]}/pull/${match[3]}`.toLowerCase();
 }
 
-const INDEX_VERSION = 1;
+const INDEX_VERSION = 2;
 
 /**
  * Finds the session that ran `gh pr create` for this PR.
@@ -118,7 +120,7 @@ function creationTimes(file) {
   const times = new Map();
   for (const transcript of [file, ...subagentFiles]) {
     const createCommandIds = new Set();
-    const lines = (line) => PR_CREATE_COMMAND.test(line) || line.includes('"gitOperation"');
+    const lines = (line) => PR_CREATE_LINE.test(line) || line.includes('"gitOperation"');
     for (const record of readRecords(transcript, lines)) {
       for (const block of contentBlocks(record)) {
         if (
