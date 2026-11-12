@@ -8,6 +8,7 @@ description: Install or update lachs on this Mac (native host, Zed init command,
 Run every step. All of them are safe to repeat.
 
 1. **Pick the app.** Read `app` from `~/.config/lachs/config.json` (default `terminal`). If it is unset, list the apps in `bin/lachs-*` (see "Apps" in README.md) and ask which one should open sessions. Write the choice into the config, even the default, so a rerun doesn't ask again: create it with `mkdir -p ~/.config/lachs` if needed, merge into existing JSON and keep other keys.
+   - Look for other Claude config dirs with `ls -d ~/.claude-*`. If there are any that `claudeConfigDirs` doesn't list yet, ask which project folder uses each, and add them, e.g. `"claudeConfigDirs": {"~/projects/private": "~/.claude-private"}` (see README.md).
 
 2. **Check prerequisites.** `node` is on PATH, Brave or Chrome is installed, and the app the script drives exists (e.g. `/Applications/Zed.app` for `zed`). Stop and tell the user what is missing.
 
@@ -35,7 +36,7 @@ Steps 4 and 5 are only for `zed`. For another app, follow the "Setup:" note at t
    Skip this step when the extension is already loaded. It reloads itself after updates.
 
 7. **Verify.**
-   - Pick a PR this Mac created. Search `~/.claude/projects/*/*.jsonl` for `"prUrl":"`, and remember the rule in CLAUDE.md about the `gh pr create` text.
+   - Pick a PR this Mac created. Search `~/.claude/projects/*/*.jsonl` (and `projects` in each `claudeConfigDirs` dir) for `"prUrl":"`, and remember the rule in CLAUDE.md about the `gh pr create` text.
    - Run `~/.local/share/lachs/native-host lookup <pr-url>`. It must return a session.
    - Ask the user to open that PR in the browser and confirm the Claude mascot button shows up. If the toolbar icon shows a red "!", its popup has the error.
    - Ask the user to click the button. A notification with the salmon icon must appear. If not, they must allow notifications for Brave (or Chrome) in System Settings → Notifications.

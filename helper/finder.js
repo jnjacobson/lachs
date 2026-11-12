@@ -12,18 +12,18 @@ export function normalizePrUrl(url) {
   return `https://github.com/${match[1]}/${match[2]}/pull/${match[3]}`.toLowerCase();
 }
 
-const INDEX_VERSION = 2;
+const INDEX_VERSION = 3;
 
 /**
- * Finds the session that ran `gh pr create` for this PR.
+ * Finds the session that ran `gh pr create` for this PR, searching `projects` in every dir of `configDirs`.
  * Returns null when no transcript on this machine created it.
  *
  * Transcripts are big, so which PRs each one created is cached in `indexFile`
  * and only transcripts whose size or mtime changed are read again.
  */
-export function findCreatorSession(prUrl, { projectsDir, indexFile }) {
+export function findCreatorSession(prUrl, { configDirs, indexFile }) {
   const target = normalizePrUrl(prUrl);
-  const creator = findCreator(target, projectsDir, indexFile);
+  const creator = findCreator(target, configDirs, indexFile);
   if (!creator) return null;
 
   const session = followHandoffs(creator.transcript);
@@ -32,30 +32,35 @@ export function findCreatorSession(prUrl, { projectsDir, indexFile }) {
     title: session.title,
     cwd: session.cwd,
     createdAt: new Date(creator.createdAt).toISOString(),
+    configDir: creator.configDir,
   };
 }
 
-function findCreator(target, projectsDir, indexFile) {
+// The index is keyed by absolute transcript path, so one index serves every config dir.
+function findCreator(target, configDirs, indexFile) {
   const known = readIndex(indexFile);
   const files = {};
   let changed = false;
   let creator = null;
-  for (const file of fs.globSync('*/*.jsonl', { cwd: projectsDir })) {
-    const transcript = path.join(projectsDir, file);
-    const stat = fs.statSync(transcript);
-    const mtimeMs = Math.floor(stat.mtimeMs);
-    const { size } = stat;
-    let entry = known[file];
-    if (entry?.mtimeMs !== mtimeMs || entry.size !== size) {
-      entry = { mtimeMs, size, prs: scanTranscript(transcript) };
-      changed = true;
-    }
-    files[file] = entry;
+  for (const configDir of configDirs) {
+    const projectsDir = path.join(configDir, 'projects');
+    for (const file of fs.globSync('*/*.jsonl', { cwd: projectsDir })) {
+      const transcript = path.join(projectsDir, file);
+      const stat = fs.statSync(transcript);
+      const mtimeMs = Math.floor(stat.mtimeMs);
+      const { size } = stat;
+      let entry = known[transcript];
+      if (entry?.mtimeMs !== mtimeMs || entry.size !== size) {
+        entry = { mtimeMs, size, prs: scanTranscript(transcript) };
+        changed = true;
+      }
+      files[transcript] = entry;
 
-    const created = entry.prs[target];
-    // Forks copy the creation, but no pr-links, so the original linked the PR first.
-    if (created && (!creator || created.linkedAt < creator.linkedAt)) {
-      creator = { transcript, ...created };
+      const created = entry.prs[target];
+      // Forks copy the creation, but no pr-links, so the original linked the PR first.
+      if (created && (!creator || created.linkedAt < creator.linkedAt)) {
+        creator = { transcript, configDir, ...created };
+      }
     }
   }
   if (changed || Object.keys(known).length !== Object.keys(files).length) {
