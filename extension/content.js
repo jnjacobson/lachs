@@ -4,18 +4,18 @@ const HEADER_ACTIONS = '[data-component="PageHeader"] [data-component="PH_Action
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const CLAUDE_ORANGE = '#D97757';
 const EYE_COLOR = '#1F2328';
-// Claude Code's mascot from its welcome screen ( ▐▛███▜▌ / ▝▜█████▛▘ / ▘▘ ▝▝ ),
-// one rect per block, a quarter block being 1 wide and 2 tall.
+// Claude Code's mascot from its welcome screen ( ▐▛███▜▌ / ▝▜█████▛▘ / ▝▝   ▘▘ ),
+// one rect per block, a quarter block being 1 wide and 2 tall. The legs sit on the body's edges.
 const MASCOT = [
   { x: 3, y: 0, width: 12, height: 4, fill: CLAUDE_ORANGE },
   { x: 5, y: 2, width: 1, height: 2, fill: EYE_COLOR },
   { x: 12, y: 2, width: 1, height: 2, fill: EYE_COLOR },
   { x: 1, y: 4, width: 16, height: 2, fill: CLAUDE_ORANGE },
   { x: 3, y: 6, width: 12, height: 2, fill: CLAUDE_ORANGE },
-  { x: 4, y: 8, width: 1, height: 2, fill: CLAUDE_ORANGE },
-  { x: 6, y: 8, width: 1, height: 2, fill: CLAUDE_ORANGE },
-  { x: 11, y: 8, width: 1, height: 2, fill: CLAUDE_ORANGE },
-  { x: 13, y: 8, width: 1, height: 2, fill: CLAUDE_ORANGE },
+  { x: 3, y: 8, width: 1, height: 2, fill: CLAUDE_ORANGE },
+  { x: 5, y: 8, width: 1, height: 2, fill: CLAUDE_ORANGE },
+  { x: 12, y: 8, width: 1, height: 2, fill: CLAUDE_ORANGE },
+  { x: 14, y: 8, width: 1, height: 2, fill: CLAUDE_ORANGE },
 ];
 
 let current = null;
