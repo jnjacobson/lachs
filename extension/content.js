@@ -1,7 +1,6 @@
 const BUTTON_ID = 'lachs-session-button';
 const PR_PATH = /^\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:\/|$)/;
 const HEADER_ACTIONS = '[data-component="PageHeader"] [data-component="PH_Actions"]';
-const SVG_NS = 'http://www.w3.org/2000/svg';
 const CLAUDE_ORANGE = '#D97757';
 const EYE_COLOR = '#1F2328';
 // Claude Code's mascot from its welcome screen ( ▐▛███▜▌ / ▝▜█████▛▘ / ▝▝   ▘▘ ),
@@ -85,19 +84,32 @@ function tooltip(session) {
   return `Open Claude session\n${session.title}\nCreated ${created}${status}`;
 }
 
-function mascotIcon() {
-  const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('viewBox', '1 0 16 10');
-  svg.setAttribute('width', '24');
-  svg.setAttribute('height', '15');
-  svg.setAttribute('shape-rendering', 'crispEdges');
-  svg.setAttribute('aria-hidden', 'true');
-  for (const block of MASCOT) {
-    const rect = document.createElementNS(SVG_NS, 'rect');
-    for (const [name, value] of Object.entries(block)) rect.setAttribute(name, value);
-    svg.append(rect);
+// Drawn in device pixels so every block edge lands on a pixel. Rows get equal whole-pixel heights;
+// a unit is as wide as half a terminal cell (cells are 0.475 as wide as tall), so the left half is
+// snapped and mirrored onto the right, keeping each eye and leg pair the same width.
+function mascotIcon(width = 24) {
+  const ratio = window.devicePixelRatio || 1;
+  const row = Math.max(1, Math.round(((width * 10) / 16 / 5) * ratio));
+  const unit = row * 0.475;
+  const half = Math.round(8 * unit);
+  const canvas = document.createElement('canvas');
+  canvas.width = 2 * half;
+  canvas.height = 5 * row;
+  canvas.style.width = `${canvas.width / ratio}px`;
+  canvas.style.height = `${canvas.height / ratio}px`;
+  canvas.style.verticalAlign = 'middle';
+  canvas.setAttribute('aria-hidden', 'true');
+  // Grid x runs from 1 to 17 with the middle at 9.
+  const edge = (x) =>
+    x <= 9 ? Math.round((x - 1) * unit) : 2 * half - Math.round((17 - x) * unit);
+  const context = canvas.getContext('2d');
+  for (const { x, y, width: w, height: h, fill } of MASCOT) {
+    context.fillStyle = fill;
+    const left = edge(x);
+    const top = (y / 2) * row;
+    context.fillRect(left, top, edge(x + w) - left, (h / 2) * row);
   }
-  return svg;
+  return canvas;
 }
 
 async function openSession(button) {
