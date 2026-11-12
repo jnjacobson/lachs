@@ -3,6 +3,7 @@
 #   resume <session-id> <cwd> <repo-root>        open a new Terminal window that resumes the session
 #   focus <session-id> <cwd> <repo-root> <pid>   bring the Terminal tab running that Claude process to the front
 # Terminal runs your login shell interactively, so your `claude` function or alias applies.
+# CLAUDE_CONFIG_DIR, when lachs sets it, is passed on to claude.
 # Setup: none. On the first click, macOS asks whether the browser may control Terminal; allow it.
 set -eu
 
@@ -13,8 +14,13 @@ quote() {
 
 case "${1:-}" in
   resume)
+    # The new window doesn't inherit this environment. sh, bash, zsh and fish (3.1+) all read `VAR=value cmd`.
+    claude="claude"
+    if [ -n "${CLAUDE_CONFIG_DIR:-}" ]; then
+      claude="CLAUDE_CONFIG_DIR=$(quote "$CLAUDE_CONFIG_DIR") claude"
+    fi
     # Activating a stopped Terminal opens a default window; `launch` opens none, so do script makes the only one.
-    exec osascript - "cd $(quote "$3") && claude --resume $(quote "$2")" <<'EOF'
+    exec osascript - "cd $(quote "$3") && $claude --resume $(quote "$2")" <<'EOF'
 on run argv
   tell application "Terminal"
     launch

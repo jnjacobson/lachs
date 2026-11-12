@@ -5,14 +5,19 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  CONFIG_FILE,
+  claudeConfigDirs,
+  claudeEnv,
+  claudeGlobalConfigFile,
+  homePath,
+  readConfig,
+} from './config.js';
 import { findCreatorSession, normalizePrUrl } from './finder.js';
 
 const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const HOME = os.homedir();
-const PROJECTS_DIR = path.join(HOME, '.claude', 'projects');
 const INDEX_FILE = path.join(HOME, '.cache', 'lachs', 'index.json');
-const RUNNING_SESSIONS_DIR = path.join(HOME, '.claude', 'sessions');
-const CONFIG_FILE = path.join(HOME, '.config', 'lachs', 'config.json');
 const CLAUDE_WORKTREE = /^(.+?)\/\.claude\/worktrees\/([^/]+)/;
 // An app is an executable, bin/lachs-<name>, picked by "app" in the config. See README.md.
 const APPS_DIR = path.join(REPO, 'bin');
@@ -39,9 +44,12 @@ async function handle(message) {
 }
 
 function lookup(prUrl) {
-  const session = findCreatorSession(prUrl, { projectsDir: PROJECTS_DIR, indexFile: INDEX_FILE });
+  const session = findCreatorSession(prUrl, {
+    configDirs: claudeConfigDirs(),
+    indexFile: INDEX_FILE,
+  });
   if (!session) return null;
-  const pid = runningPid(session.sessionId);
+  const pid = runningPid(session.sessionId, session.configDir);
   return { ...session, running: pid !== null, pid };
 }
 
@@ -52,10 +60,10 @@ async function open(prUrl) {
   const { title } = session;
   if (!session.cwd) return { status: 'folder-missing', title };
   const app = configuredApp();
-  const repoRoot = mainCheckout(session.cwd, repoSlug(prUrl));
+  const repoRoot = mainCheckout(session.cwd, repoSlug(prUrl), session.configDir);
   const where = place(session.cwd, repoRoot);
   if (session.running) {
-    const hint = await runApp(app, [
+    const hint = await runApp(app, session.configDir, [
       'focus',
       session.sessionId,
       session.cwd,
@@ -67,7 +75,7 @@ async function open(prUrl) {
 
   const cwdExists = fs.existsSync(session.cwd);
   if (!cwdExists && !fs.existsSync(repoRoot)) return { status: 'folder-missing', title };
-  const hint = await runApp(app, [
+  const hint = await runApp(app, session.configDir, [
     'resume',
     session.sessionId,
     cwdExists ? session.cwd : repoRoot,
@@ -78,7 +86,7 @@ async function open(prUrl) {
 
 // "app" is a name from bin/lachs-<name> or a path to your own executable.
 function configuredApp() {
-  const config = readJson(CONFIG_FILE) ?? {};
+  const config = readConfig();
   if ('resume' in config || 'focus' in config) {
     throw new Error(
       `"resume" and "focus" in ${CONFIG_FILE} are no longer supported. Move the command into a script and set "app" to its path.`,
@@ -87,17 +95,12 @@ function configuredApp() {
   const name = config.app ?? DEFAULT_APP;
   const executable =
     typeof name === 'string' &&
-    (name.includes('/') ? appPath(name) : path.join(APPS_DIR, `lachs-${name}`));
+    (name.includes('/') ? homePath(name) : path.join(APPS_DIR, `lachs-${name}`));
   if (executable && isExecutableFile(executable)) return executable;
   const apps = fs.globSync('lachs-*', { cwd: APPS_DIR }).map((file) => file.slice('lachs-'.length));
   throw new Error(
     `Unknown app ${JSON.stringify(name)} in ${CONFIG_FILE}. Use one of: ${apps.join(', ')}, or a path to an executable.`,
   );
-}
-
-// "~/bin/x" and paths relative to the home folder work too.
-function appPath(name) {
-  return path.resolve(HOME, name.replace(/^~(?=\/)/, HOME));
 }
 
 function isExecutableFile(file) {
@@ -111,9 +114,13 @@ function isExecutableFile(file) {
 
 // Resolves to what the app printed, a hint for the notification, or rejects when it fails.
 // An app still running after APP_TIMEOUT_MS keeps running, and its output so far counts.
-function runApp(app, args) {
+function runApp(app, configDir, args) {
   return new Promise((resolve, reject) => {
-    const child = spawn(app, args, { detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(app, args, {
+      detached: true,
+      env: claudeEnv(configDir),
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', (chunk) => (stdout += chunk));
@@ -147,9 +154,10 @@ function place(cwd, repoRoot) {
   return insideProject ? project : `${project} (worktree ${path.basename(cwd)})`;
 }
 
-function runningPid(sessionId) {
-  for (const name of fs.globSync('*.json', { cwd: RUNNING_SESSIONS_DIR })) {
-    const entry = readJson(path.join(RUNNING_SESSIONS_DIR, name));
+function runningPid(sessionId, configDir) {
+  const runningSessionsDir = path.join(configDir, 'sessions');
+  for (const name of fs.globSync('*.json', { cwd: runningSessionsDir })) {
+    const entry = readJson(path.join(runningSessionsDir, name));
     if (entry?.sessionId === sessionId && isAlive(entry.pid, entry.procStart)) return entry.pid;
   }
   return null;
@@ -169,7 +177,7 @@ function isAlive(pid, procStart) {
   }
 }
 
-function mainCheckout(cwd, repo) {
+function mainCheckout(cwd, repo, configDir) {
   const claudeWorktree = cwd.match(CLAUDE_WORKTREE);
   if (claudeWorktree) return claudeWorktree[1];
   try {
@@ -185,11 +193,11 @@ function mainCheckout(cwd, repo) {
   } catch {
     // The folder is gone or not a git checkout.
   }
-  return knownCheckout(repo) ?? cwd;
+  return knownCheckout(repo, configDir) ?? cwd;
 }
 
-function knownCheckout(repo) {
-  const repoPaths = readJson(path.join(HOME, '.claude.json'))?.githubRepoPaths ?? {};
+function knownCheckout(repo, configDir) {
+  const repoPaths = readJson(claudeGlobalConfigFile(configDir))?.githubRepoPaths ?? {};
   const key = Object.keys(repoPaths).find((slug) => slug.toLowerCase() === repo);
   return (
     (repoPaths[key] ?? []).find((dir) => !CLAUDE_WORKTREE.test(dir) && fs.existsSync(dir)) ?? null

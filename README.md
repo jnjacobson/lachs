@@ -56,13 +56,23 @@ An app is an executable `bin/lachs-<name>`; `app` can also be a path to your own
 - `resume <session-id> <cwd> <repo-root>`: start `claude --resume <session-id>` in `<cwd>`.
 - `focus <session-id> <cwd> <repo-root> <pid>`: the session already runs as process `<pid>`; bring it to the front if you can.
 
+When the session belongs to another Claude config dir (see below), `CLAUDE_CONFIG_DIR` is set in the app's environment. Pass it on to `claude`.
+
 Whatever it prints to stdout is added to the notification, so print what the user has to do next, if anything. A non-zero exit shows stderr as an error instead. lachs waits up to 5 seconds for it to exit, so print before anything slow. Arguments may grow at the end, so ignore extra ones. Put a `# Setup:` comment at the top saying what setup the app needs; the setup skill follows it.
+
+## Several Claude config dirs
+
+If you use another `CLAUDE_CONFIG_DIR` for some projects, for example a private account, map the project folders to it:
+
+```json
+{ "claudeConfigDirs": { "~/projects/private": "~/.claude-private" } }
+```
+
+lachs then finds sessions in those dirs too and resumes them with the right `CLAUDE_CONFIG_DIR`. `~/.claude` is always searched. With Zed, a new terminal thread also starts with the dir its folder maps to, or `~/.claude` outside the mapped folders.
 
 ## How it works
 
-The extension asks a local helper, registered as a native messaging host, which session created the PR. The helper searches the transcripts in `~/.claude/projects` for the PR's URL, using an index in `~/.cache/lachs/index.json` so only new or changed transcripts are read (delete it to rebuild; the first lookup after that takes a second or so), and checks `~/.claude/sessions` to see whether that session is still running. Nothing leaves your Mac.
-
-Only sessions under `~/.claude` are found. Sessions from a different `CLAUDE_CONFIG_DIR` aren't.
+The extension asks a local helper, registered as a native messaging host, which session created the PR. The helper searches the transcripts in `~/.claude/projects` (and the `projects` folder of each dir in `claudeConfigDirs`) for the PR's URL, using an index in `~/.cache/lachs/index.json` so only new or changed transcripts are read (delete it to rebuild; the first lookup after that takes a second or so), and checks the `sessions` folder next to it to see whether that session is still running. Nothing leaves your Mac.
 
 ## Development
 

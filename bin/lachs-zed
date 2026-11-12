@@ -4,7 +4,9 @@
 #   focus <session-id> <cwd> <repo-root> <pid>   focus the repo in Zed
 #   init                                         Zed's agent.terminal_init_command. If "shell" is set in
 #                                                the config (fish, zsh, bash), Claude starts through it
-#                                                so your `claude` function or alias applies
+#                                                so your `claude` function or alias applies. A resumed
+#                                                session gets the CLAUDE_CONFIG_DIR lachs set; a new one
+#                                                gets the dir "claudeConfigDirs" maps its folder to
 # Setup: steps 4 and 5 of the setup skill (Zed's init command and the shell).
 set -eu
 
@@ -12,17 +14,18 @@ NOTE="$HOME/.local/state/lachs/resume-note"
 # Zed also runs the init command when it restores saved threads; only a fresh note counts.
 NOTE_MAX_AGE_SECONDS=60
 ZED_CLI=/Applications/Zed.app/Contents/MacOS/cli
-CONFIG="${LACHS_CONFIG:-$HOME/.config/lachs/config.json}"
+REPO=$(cd "$(dirname "$0")/.." && pwd)
 
-# The "shell" value from the config, or nothing when unset or unreadable.
-configured_shell() {
-  [ -f "$CONFIG" ] || return 0
-  node -e 'try { const s = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).shell; if (typeof s === "string") console.log(s) } catch {}' "$CONFIG" 2>/dev/null || true
+# Applies a "CLAUDE_CONFIG_DIR=<dir>" line. "CLAUDE_CONFIG_DIR=" unsets it, an empty line keeps it.
+apply_claude_env() {
+  case "$1" in
+    CLAUDE_CONFIG_DIR=) unset CLAUDE_CONFIG_DIR ;;
+    CLAUDE_CONFIG_DIR=*) export "$1" ;;
+  esac
 }
 
 # Starts claude with the given args, through the configured shell when there is one.
 run_claude() {
-  shell=$(configured_shell)
   if [ -n "$shell" ] && command -v "$shell" >/dev/null 2>&1; then
     case "$(basename "$shell")" in
       fish) exec "$shell" -c 'claude $argv' -- "$@" ;;
@@ -35,7 +38,7 @@ run_claude() {
 case "${1:-}" in
   resume)
     mkdir -p "$(dirname "$NOTE")"
-    printf '%s\n%s\n' "$2" "$3" > "$NOTE.tmp"
+    printf '%s\n%s\n%s\n' "$2" "$3" "CLAUDE_CONFIG_DIR=${CLAUDE_CONFIG_DIR:-}" > "$NOTE.tmp"
     mv "$NOTE.tmp" "$NOTE"
     echo "Open a new terminal thread to start it."
     exec "$ZED_CLI" -e "$4" >/dev/null
@@ -45,15 +48,23 @@ case "${1:-}" in
     exec "$ZED_CLI" -e "$4" >/dev/null
     ;;
   init)
+    # A broken config shows its error in the thread; Claude still starts.
+    settings=$(node "$REPO/helper/config.js" zed-init) || settings=
+    shell=$(printf '%s\n' "$settings" | sed -n 1p)
+    new_session_env=$(printf '%s\n' "$settings" | sed -n 2p)
     claimed="$NOTE.$$"
     if mv "$NOTE" "$claimed" 2>/dev/null; then
       age=$(( $(date +%s) - $(stat -f %m "$claimed") ))
-      { read -r session_id; read -r cwd; } < "$claimed"
+      session_env=
+      { read -r session_id; read -r cwd; read -r session_env || true; } < "$claimed"
       rm -f "$claimed"
       if [ "$age" -le "$NOTE_MAX_AGE_SECONDS" ] && cd "$cwd" 2>/dev/null; then
+        # The session lives in that dir, whatever the folder maps to.
+        apply_claude_env "$session_env"
         run_claude --resume "$session_id"
       fi
     fi
+    apply_claude_env "$new_session_env"
     run_claude
     ;;
   *)
